@@ -4,23 +4,34 @@ from scipy.special import comb
 
 def numerical_NAC(mc1, mc2, nelec, ncas, nelecas, overlapAllAO, dR, nstate1=0, nstate2=1):
     '''
-    Numerical non-adiabatic-coupling calculator
+    Numerical non-adiabatic-coupling calculator for multi-electrons-wavefunction.
+    It is based on equ(5) in J. Phys. Chem. Lett. 2015, 6, 4200−4203.
+
+    overlapAllAO:   Overlap between all atomic orbitals from mol12, which can be divided into 
+                    overlap between mol1 & mol1, mol1 & mol2, mol2 & mol1 and mol2 & mol2. 
+                    Only the second one will be used for calculate overlapMO.
+    
+    overlapAO:      Second part of overlapAllAO.
+    
+    overlapMO:      Overlap between all molecular orbitals between mol1 and mol2.
+
+    overlapCAS:     Overlap between mcscf wavefunction. 
     '''
     overlapAO = overlapAllAO[:len(overlapAllAO)/2, len(overlapAllAO)/2:]
     nelecore = nelec - nelecas
     overlapMO = numpy.zeros((nelecore//2+ncas, nelecore//2+ncas))
-    #dR = dR/3.14159265*180.0  # If the unit of dR is degree, it's better to convert it to RAD
     
+    # Convert overlapAO to overlapMO
     for ii in range(nelecore//2+ncas):
         for jj in range(nelecore//2+ncas):
             moTmp1 = mc1.mo_coeff[..., ii]
             moTmp2 = mc2.mo_coeff[..., jj]
             overlapMO[ii][jj] = numpy.einsum("i,ij,j->", moTmp1, overlapAO, moTmp2)
-
+    
+    # Convert ci_coeff matrix to one-dimensional array
     ciRow = mc1.ci[nstate1].shape[0]
     ciColumn = mc1.ci[nstate1].shape[1]
 
-    # ci is one-dimensional array converted from ci matrix from mcscf calculations
     ci1 = numpy.zeros((2,ciRow*ciColumn))
     ci2 = numpy.zeros((2,ciRow*ciColumn))
     for ii in range(len(ci1[0])):
@@ -29,6 +40,7 @@ def numerical_NAC(mc1, mc2, nelec, ncas, nelecas, overlapAllAO, dR, nstate1=0, n
         ci1[1][ii] = mc1.ci[nstate2][ii//ciColumn][ii-ii//ciColumn*ciColumn]
         ci2[1][ii] = mc2.ci[nstate2][ii//ciColumn][ii-ii//ciColumn*ciColumn]
     
+    # Calculate overlapCAS and NAC using equ(5) in the literature
     overlapCAS = get_ovlp_nonothorgonal(ci1, ci2, ncas, nelecas, nelec, overlapMO)
     NAC = (overlapCAS[1][0]-overlapCAS[0][1])/4.0/dR
 
@@ -39,6 +51,10 @@ def get_ovlp_nonothorgonal(ci1, ci2, ncas, nelecas, nelec, overlapMO):
     '''
     Calculate overlap between nonorthogonal multi-electrons wavefunctions. 
     Key point is to specify excitations in ci1 and ci2
+     
+    overlapCI:      Overlap between different configurations.
+    
+    overlapCAS:     Overlap between mcscf wavefunction. 
     '''
     overlapCI = numpy.zeros((len(ci1[0]),len(ci2[0])))
     config = configurations_generator(ncas, nelecas)
@@ -58,7 +74,7 @@ def get_ovlp_nonothorgonal(ci1, ci2, ncas, nelecas, nelec, overlapMO):
 def get_ovlp_nonothorgonal_configurations(overlapMO, nelec, ncas, nelecas, config1, config2):
     '''
     Calculate overlap between nonorthogonal configurations. 
-    config1 and config2 belong to class Config. 
+    It is based on L\"owdin Formula equ(8) in J. Phys. Chem. Lett. 2015, 6, 4200−4203.
     '''
     nelecore = nelec - nelecas
     detTMP = numpy.zeros((nelec, nelec))
@@ -74,8 +90,10 @@ def get_ovlp_nonothorgonal_configurations(overlapMO, nelec, ncas, nelecas, confi
             else:
                 jjtmp = config2[jj - nelecore] + nelecore
             if(divmod(iitmp+jjtmp,2)[1]!=0):
+                # Overlap between spin orbitals with different spin is 0.
                 detTMP[ii][jj] = 0.0
             else:
+                # Turn overlap between spin orbitals to spatial orbitals.
                 detTMP[ii][jj] = overlapMO[iitmp//2][jjtmp//2]
 
     overlapCI = numpy.linalg.det(detTMP)
@@ -84,7 +102,9 @@ def get_ovlp_nonothorgonal_configurations(overlapMO, nelec, ncas, nelecas, confi
     
 def configurations_generator(ncas, nelecas):
     '''
-    Generate all configurations for active space (nelecas in ncas)
+    Generate all possible configurations for active space (nelecas in ncas)
+    Return an array with spin orbitals which alpha and beta electrons occupy.
+    The range of elements in the array is from 0 to ncas - 1, which is define in active space.
     '''
     nelecas_b = nelecas//2
     nelecas_a = nelecas - nelecas_b

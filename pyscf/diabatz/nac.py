@@ -4,6 +4,17 @@ from pyscf.diabatz import numerical
 class NAC(object):
     '''
     Class for non-adiabatic-coupling (NAC).
+    Get single molecular structures from mc and create dimer to calculate overlapAO
+    Final result of NAC is < \Psi_{nstate1} | \frac{\partial}{\partial R} | \Psi_{nstate2} >
+
+    return NAC and 2-by-2 overlap matrix between mcscf wavefunction.
+
+    mc1 & mc2:  Input CASCI/CASSCF class for two kinds of molecular structures.
+
+    dR:         Delta R of numerical calculations for NAC based on equ(5) 
+                in J. Phys. Chem. Lett. 2015, 6, 4200−4203.
+
+    method:     Only "numerical" is supported now.
     '''
     def __init__(self, mc1, mc2 = None, dR = None, overlapAO = [], nstate1 = 0, nstate2 = 1, method = "numerical"):
         self.mc1 = mc1
