@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -874,6 +874,10 @@ class TDHF(TDA):
 
 RPA = TDUHF = TDHF
 
+from pyscf import scf
+scf.uhf.UHF.TDA = lib.class_as_method(TDA)
+scf.uhf.UHF.TDHF = lib.class_as_method(TDHF)
+
 del(OUTPUT_THRESHOLD)
 
 
@@ -891,13 +895,13 @@ if __name__ == '__main__':
     mol.build()
 
     mf = scf.UHF(mol).run()
-    td = TDA(mf)
+    td = mf.TDA()
     td.nstates = 5
     td.verbose = 3
     print(td.kernel()[0] * 27.2114)
 # [ 11.01748568  11.01748568  11.90277134  11.90277134  13.16955369]
 
-    td = TDHF(mf)
+    td = mf.TDHF()
     td.nstates = 5
     td.verbose = 3
     print(td.kernel()[0] * 27.2114)

@@ -219,11 +219,12 @@ C    SP
         mol1.nucprop = {'H': {'mass': 3}}
         mol1.output = '/dev/null'
         mol1.build(False, False)
-        self.assertAlmostEqual(lib.finger(gto.inertia_momentum(mol1)), 0.4904000666680097, 9)
+        self.assertAlmostEqual(lib.finger(gto.inertia_moment(mol1)),
+                               2.139593709454326, 9)
 
         mass = mol0.atom_mass_list(isotope_avg=True)
-        self.assertAlmostEqual(lib.finger(gto.inertia_momentum(mol1, mass)),
-                               0.49438098023924004, 9)
+        self.assertAlmostEqual(lib.finger(gto.inertia_moment(mol1, mass)),
+                               2.1549269955776205, 9)
 
     def test_chiral_mol(self):
         mol1 = gto.M(atom='C 0 0 0; H 1 1 1; He -1 -1 1; Li -1 1 -1; Be 1 -1 -1')
@@ -557,6 +558,7 @@ O    SP
             self.assertEqual(len(shls), nshls)
             self.assertEqual(mol0.atom_nshells(i), nshls)
         aoslice = mol0.aoslice_2c_by_atom()
+        mol0.elements  # test property(elements) in Mole
         self.assertEqual([x[2] for x in aoslice], [0, 8, 56])
         self.assertEqual([x[3] for x in aoslice], [8, 56, 64])
 

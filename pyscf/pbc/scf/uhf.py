@@ -128,7 +128,7 @@ class UHF(mol_uhf.UHF, pbchf.SCF):
             if nalpha + nbeta != ne:
                 raise RuntimeError('Electron number %d and spin %d are not consistent\n'
                                    'Note cell.spin = 2S = Nalpha - Nbeta, not 2S+1' %
-                                   (ne, self.spin))
+                                   (ne, cell.spin))
             return nalpha, nbeta
     @nelec.setter
     def nelec(self, x):
@@ -216,19 +216,7 @@ class UHF(mol_uhf.UHF, pbchf.SCF):
     def get_init_guess(self, cell=None, key='minao'):
         if cell is None: cell = self.cell
         dm = mol_uhf.UHF.get_init_guess(self, cell, key)
-        if cell.dimension < 3:
-            if isinstance(dm, np.ndarray) and dm.ndim == 2:
-                ne = np.einsum('ij,ji->', dm, self.get_ovlp(cell))
-            else:
-                ne = np.einsum('xij,ji->', dm, self.get_ovlp(cell))
-            if abs(ne - cell.nelectron).sum() > 1e-7:
-                logger.warn(self, 'Big error detected in the electron number '
-                            'of initial guess density matrix (Ne/cell = %g)!\n'
-                            '  This can cause huge error in Fock matrix and '
-                            'lead to instability in SCF for low-dimensional '
-                            'systems.\n  DM is normalized to the number '
-                            'of electrons', ne)
-                dm *= cell.nelectron / ne
+        dm = pbchf.normalize_dm_(self, dm)
         return dm
 
     def init_guess_by_1e(self, cell=None):

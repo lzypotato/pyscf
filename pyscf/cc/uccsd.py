@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -730,6 +730,10 @@ class UCCSD(ccsd.CCSD):
 
     def amplitudes_from_rccsd(self, t1, t2):
         return amplitudes_from_rccsd(t1, t2)
+
+CCSD = UCCSD
+from pyscf import scf
+scf.uhf.UHF.CCSD = lib.class_as_method(CCSD)
 
 
 class _ChemistsERIs(ccsd._ChemistsERIs):

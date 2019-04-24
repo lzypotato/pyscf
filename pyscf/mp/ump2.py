@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -320,6 +320,11 @@ class UMP2(mp2.MP2):
     def nuc_grad_method(self):
         from pyscf.grad import ump2
         return ump2.Gradients(self)
+
+MP2 = UMP2
+
+from pyscf import scf
+scf.uhf.UHF.MP2 = lib.class_as_method(MP2)
 
 
 class _ChemistsERIs(mp2._ChemistsERIs):

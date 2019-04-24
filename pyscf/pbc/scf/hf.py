@@ -38,8 +38,8 @@ from pyscf.pbc import tools
 from pyscf.pbc.gto import ecp
 from pyscf.pbc.gto.pseudo import get_pp
 from pyscf.pbc.scf import chkfile
-from pyscf.pbc import df
 from pyscf.pbc.scf import addons
+from pyscf.pbc import df
 from pyscf import __config__
 
 
@@ -218,7 +218,8 @@ def dip_moment(cell, dm, unit='Debye', verbose=logger.NOTE,
     from pyscf.pbc.dft import numint
     if cell.dimension != 3:
         # raise NotImplementedError
-        return numpy.zeros(3)
+        logger.warn(cell, 'Dipole moment for low-dimension system is not supported.')
+        return np.zeros(3)
 
     log = logger.new_logger(cell, verbose)
     a = cell.lattice_vectors()
@@ -695,16 +696,7 @@ class SCF(mol_hf.SCF):
     def get_init_guess(self, cell=None, key='minao'):
         if cell is None: cell = self.cell
         dm = mol_hf.SCF.get_init_guess(self, cell, key)
-        if cell.dimension < 3:
-            ne = np.einsum('ij,ji', dm, self.get_ovlp(cell))
-            if abs(ne - cell.nelectron).sum() > 1e-7:
-                logger.warn(self, 'Big error detected in the electron number '
-                            'of initial guess density matrix (Ne/cell = %g)!\n'
-                            '  This can cause huge error in Fock matrix and '
-                            'lead to instability in SCF for low-dimensional '
-                            'systems.\n  DM is normalized to the number '
-                            'of electrons', ne)
-                dm *= cell.nelectron / ne
+        dm = normalize_dm_(self, dm)
         return dm
 
     def init_guess_by_1e(self, cell=None):
@@ -749,6 +741,18 @@ class SCF(mol_hf.SCF):
         return sfx2c1e.sfx2c1e(self)
     x2c = x2c1e = sfx2c1e
 
+    def to_rhf(self, mf):
+        '''Convert the input mean-field object to a RHF/ROHF/RKS/ROKS object'''
+        return addons.convert_to_rhf(mf)
+
+    def to_uhf(self, mf):
+        '''Convert the input mean-field object to a UHF/UKS object'''
+        return addons.convert_to_uhf(mf)
+
+    def to_ghf(self, mf):
+        '''Convert the input mean-field object to a GHF/GKS object'''
+        return addons.convert_to_ghf(mf)
+
 
 class RHF(SCF, mol_hf.RHF):
 
@@ -772,3 +776,22 @@ def _format_jks(vj, dm, kpts_band):
     elif getattr(dm, "ndim", 0) == 2:
         vj = vj[0]
     return vj
+
+def normalize_dm_(mf, dm):
+    '''
+    Scale density matrix to make it produce the correct number of electrons.
+    '''
+    cell = mf.cell
+    if isinstance(dm, np.ndarray) and dm.ndim == 2:
+        ne = np.einsum('ij,ji->', dm, mf.get_ovlp(cell)).real
+    else:
+        ne = np.einsum('xij,ji->', dm, mf.get_ovlp(cell)).real
+    if abs(ne - cell.nelectron).sum() > 1e-7:
+        logger.debug(mf, 'Big error detected in the electron number '
+                    'of initial guess density matrix (Ne/cell = %g)!\n'
+                    '  This can cause huge error in Fock matrix and '
+                    'lead to instability in SCF for low-dimensional '
+                    'systems.\n  DM is normalized wrt the number '
+                    'of electrons %s', ne, cell.nelectron)
+        dm *= cell.nelectron / ne
+    return dm

@@ -411,7 +411,7 @@ def uncontracted_basis(_basis):
     Examples:
 
     >>> gto.uncontract(gto.load('sto3g', 'He'))
-    [[0, [6.3624213899999997, 1]], [0, [1.1589229999999999, 1]], [0, [0.31364978999999998, 1]]]
+    [[0, [6.36242139, 1]], [0, [1.158923, 1]], [0, [0.31364979, 1]]]
     '''
     ubasis = []
     for b in _basis:
@@ -425,6 +425,7 @@ def uncontracted_basis(_basis):
                 ubasis.append([angl, [p[0], 1]])
     return ubasis
 uncontract = uncontracted_basis
+contract = contracted_basis = basis.to_general_contraction
 
 def to_uncontracted_cartesian_basis(mol):
     '''Decontract the basis of a Mole or a Cell.  Returns a Mole (Cell) object
@@ -1215,6 +1216,9 @@ def time_reversal_map(mol):
                     i += dj
     return numpy.asarray(tao, dtype=numpy.int32)
 
+
+CHECK_GEOM = getattr(__config__, 'gto_mole_check_geom', True)
+
 def energy_nuc(mol, charges=None, coords=None):
     '''Compute nuclear repulsion energy (AU) or static Coulomb energy
 
@@ -1235,6 +1239,10 @@ def energy_nuc(mol, charges=None, coords=None):
     #        e += q1 * q2 / r
     rr = inter_distance(mol, coords)
     rr[numpy.diag_indices_from(rr)] = 1e200
+    if CHECK_GEOM and numpy.any(rr < 1e-5):
+        for atm_idx in numpy.argwhere(rr<1e-5):
+            logger.warn(mol, 'Atoms %s have the same coordinates', atm_idx)
+        raise RuntimeError('Ill geometry')
     e = numpy.einsum('i,ij,j->', charges, 1./rr, charges) * .5
     return e
 
@@ -1585,7 +1593,7 @@ def same_mol(mol1, mol2, tol=1e-5, cmp_basis=True, ignore_chiral=False):
 
     def finger(mol, chgs, coord):
         center = numpy.einsum('z,zr->r', chgs, coord) / chgs.sum()
-        im = inertia_momentum(mol, chgs, coord)
+        im = inertia_moment(mol, chgs, coord)
         # Divid im by chgs.sum(), to normalize im. Otherwise the input tol may
         # not reflect the actual deviation.
         im /= chgs.sum()
@@ -1644,14 +1652,15 @@ def chiral_mol(mol1, mol2=None):
     return (not same_mol(mol1, mol2, ignore_chiral=False) and
             same_mol(mol1, mol2, ignore_chiral=True))
 
-def inertia_momentum(mol, mass=None, coords=None):
+def inertia_moment(mol, mass=None, coords=None):
     if mass is None:
-        mass = atom_mass_list(mol)
+        mass = mol.atom_mass_list()
     if coords is None:
         coords = mol.atom_coords()
     mass_center = numpy.einsum('i,ij->j', mass, coords)/mass.sum()
     coords = coords - mass_center
     im = numpy.einsum('i,ij,ik->jk', mass, coords, coords)
+    im = numpy.eye(3) * im.trace() - im
     return im
 
 def atom_mass_list(mol, isotope_avg=False):
@@ -2023,10 +2032,17 @@ class Mole(lib.StreamObject):
         if parse_arg:
             _update_from_cmdargs_(self)
 
-        # avoid to open output file twice
-        if (parse_arg and self.output is not None and
-            not (getattr(self.stdout, 'name', None) and  # to handle StringIO().name bug
-                 self.stdout.name == self.output)):
+        # avoid opening output file twice
+        if (self.output is not None
+            # StringIO() does not have attribute 'name'
+            and getattr(self.stdout, 'name', None) != self.output):
+
+            if self.verbose > logger.QUIET:
+                if os.path.isfile(self.output):
+                    print('overwrite output file: %s' % self.output)
+                else:
+                    print('output file: %s' % self.output)
+
             if self.output == '/dev/null':
                 self.stdout = open(os.devnull, 'w')
             else:
@@ -2447,8 +2463,8 @@ Note when symmetry attributes is assigned, the molecule needs to be placed in a 
     set_rinv_zeta_ = set_rinv_zeta  # for backward compatibility
 
     def with_rinv_zeta(self, zeta):
-        '''Retuen a temporary mol context which has the rquired charge
-        distribution on the "rinv_origin": rho(r) = Norm * exp(-zeta * r^2).
+        '''Retuen a temporary mol context which has the rquired Gaussian charge
+        distribution placed at "rinv_origin": rho(r) = Norm * exp(-zeta * r^2).
         See also :func:`mol.set_rinv_zeta`
 
         Examples:
@@ -2460,8 +2476,9 @@ Note when symmetry attributes is assigned, the molecule needs to be placed in a 
         return _TemporaryMoleContext(self.set_rinv_zeta, (zeta,), (zeta0,))
 
     def with_rinv_as_nucleus(self, atm_id):
-        '''Retuen a temporary mol context which has the rquired origin of 1/r
-        operator and the required nuclear charge distribution on 1/r.
+        '''Retuen a temporary mol context in which the rinv operator (1/r) is
+        treated like the Coulomb potential of a Gaussian charge distribution
+        rho(r) = Norm * exp(-zeta * r^2) at the place of the input atm_id.
 
         Examples:
 
@@ -2494,10 +2511,20 @@ Note when symmetry attributes is assigned, the molecule needs to be placed in a 
             mol._env = mol._env.copy()
         if unit is None:
             unit = mol.unit
+        else:
+            mol.unit = unit
         if symmetry is None:
             symmetry = mol.symmetry
 
+        if isinstance(atoms_or_coords, numpy.ndarray):
+            mol.atom = list(zip([x[0] for x in mol._atom],
+                                atoms_or_coords.tolist()))
+        else:
+            mol.atom = atoms_or_coords
+
         if isinstance(atoms_or_coords, numpy.ndarray) and not symmetry:
+            mol._atom = mol.atom
+
             if isinstance(unit, (str, unicode)):
                 if unit.upper().startswith(('B', 'AU')):
                     unit = 1.
@@ -2510,16 +2537,11 @@ Note when symmetry attributes is assigned, the molecule needs to be placed in a 
             mol._env[ptr+1] = unit * atoms_or_coords[:,1]
             mol._env[ptr+2] = unit * atoms_or_coords[:,2]
         else:
-            if isinstance(atoms_or_coords, numpy.ndarray):
-                mol.atom = list(zip([x[0] for x in mol._atom], atoms_or_coords))
-            else:
-                mol.atom = atoms_or_coords
-            mol.unit = unit
             mol.symmetry = symmetry
             mol.build(False, False)
 
         if mol.verbose >= logger.INFO:
-            logger.info(mol, 'New geometry (unit Bohr)')
+            logger.info(mol, 'New geometry (unit %s)', unit)
             coords = mol.atom_coords()
             for ia in range(mol.natm):
                 logger.info(mol, ' %3d %-4s %16.12f %16.12f %16.12f',
@@ -2571,6 +2593,11 @@ Note when symmetry attributes is assigned, the molecule needs to be placed in a 
         '''
         return _std_symbol(self._atom[atm_id][0])
 
+    @property
+    def elements(self):
+        '''A list of elements in the molecule'''
+        return [self.atom_pure_symbol(i) for i in range(self.natm)]
+
     def atom_charge(self, atm_id):
         r'''Nuclear effective charge of the given atom id
         Note "atom_charge /= charge(atom_symbol)" when ECP is enabled.
@@ -2597,7 +2624,7 @@ Note when symmetry attributes is assigned, the molecule needs to be placed in a 
         '''
         return charge(self.atom_symbol(atm_id)) - self.atom_charge(atm_id)
 
-    def atom_coord(self, atm_id):
+    def atom_coord(self, atm_id, unit='Bohr'):
         r'''Coordinates (ndarray) of the given atom id
 
         Args:
@@ -2611,12 +2638,18 @@ Note when symmetry attributes is assigned, the molecule needs to be placed in a 
         [ 0.          0.          2.07869874]
         '''
         ptr = self._atm[atm_id,PTR_COORD]
-        return self._env[ptr:ptr+3]
+        if unit[:3].upper() == 'ANG':
+            return self._env[ptr:ptr+3] * param.BOHR
+        else:
+            return self._env[ptr:ptr+3]
 
-    def atom_coords(self):
+    def atom_coords(self, unit='Bohr'):
         '''np.asarray([mol.atom_coords(i) for i in range(mol.natm)])'''
         ptr = self._atm[:,PTR_COORD]
-        return self._env[numpy.vstack((ptr,ptr+1,ptr+2)).T]
+        c = self._env[numpy.vstack((ptr,ptr+1,ptr+2)).T]
+        if unit[:3].upper() == 'ANG':
+            c *= param.BOHR
+        return c
 
     atom_mass_list = atom_mass_list
 
@@ -2815,6 +2848,8 @@ Note when symmetry attributes is assigned, the molecule needs to be placed in a 
     ao_loc = property(ao_loc_nr)
 
     tmap = time_reversal_map = time_reversal_map
+
+    inertia_moment = inertia_moment
 
     def intor(self, intor, comp=None, hermi=0, aosym='s1', out=None,
               shls_slice=None):
@@ -3030,13 +3065,23 @@ Note when symmetry attributes is assigned, the molecule needs to be placed in a 
             return lib.StreamObject.apply(self, fn, *args, **kwargs)
         elif isinstance(fn, (str, unicode)):
             from pyscf import scf, dft, mp, cc, ci, mcscf, tdscf
+            # Import all available modules. Some methods are registered when
+            # loading these modules.
+            from pyscf import grad, hessian, solvent, qmmm, prop
             for mod in (scf, dft):
                 method = getattr(mod, fn.upper(), None)
                 if method is not None and callable(method):
                     return method(self, *args, **kwargs)
 
-            for mod in (mp, cc, ci, mcscf, tdscf):
+            for mod in (mp, cc, ci, mcscf):
                 method = getattr(mod, fn.upper(), None)
+                if method is not None and callable(method):
+                    return method(scf.HF(self).run(), *args, **kwargs)
+
+            if fn.upper() == 'TDHF':
+                return tdscf.TDHF(scf.HF(self).run(), *args, **kwargs)
+            else:
+                method = getattr(tdscf, fn.upper(), None)
                 if method is not None and callable(method):
                     return method(scf.HF(self).run(), *args, **kwargs)
 
@@ -3076,15 +3121,6 @@ def _update_from_cmdargs_(mol):
 
         if opts.output:
             mol.output = opts.output
-
-    if mol.output is not None:
-        if os.path.isfile(mol.output):
-            #os.remove(mol.output)
-            if mol.verbose > logger.QUIET:
-                print('overwrite output file: %s' % mol.output)
-        else:
-            if mol.verbose > logger.QUIET:
-                print('output file: %s' % mol.output)
 
 
 def from_zmatrix(atomstr):

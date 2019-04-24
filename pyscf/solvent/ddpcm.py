@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -54,6 +54,18 @@ def ddpcm_for_post_scf(method, solvent_obj, dm=None):
     if solvent_obj is None:
         solvent_obj = DDPCM(method.mol)
     return ddcosmo.ddcosmo_for_post_scf(method, solvent_obj, dm)
+
+
+# Inject DDPCM to other methods
+from pyscf import scf
+from pyscf import mcscf
+from pyscf import mp, ci, cc
+scf.hf.SCF.DDPCM = ddpcm_for_scf
+mcscf.casci.DDPCM = ddpcm_for_casci
+mcscf.mc1step.DDPCM = ddpcm_for_casscf
+mp.mp2.MP2.DDPCM = ddpcm_for_post_scf
+ci.cisd.CISD.DDPCM = ddpcm_for_post_scf
+cc.ccsd.CCSD.DDPCM = ddpcm_for_post_scf
 
 def gen_ddpcm_solver(pcmobj, verbose=None):
     mol = pcmobj.mol

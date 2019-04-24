@@ -282,7 +282,7 @@ def analyze(mf, verbose=logger.DEBUG, with_meta_lowdin=WITH_META_LOWDIN,
 
 def mulliken_meta(cell, dm_ao_kpts, verbose=logger.DEBUG,
                   pre_orth_method=PRE_ORTH_METHOD, s=None):
-    '''Mulliken population analysis, based on meta-Lowdin AOs.
+    '''A modified Mulliken population analysis, based on meta-Lowdin AOs.
 
     Note this function only computes the Mulliken population for the gamma
     point density matrix.
@@ -291,7 +291,11 @@ def mulliken_meta(cell, dm_ao_kpts, verbose=logger.DEBUG,
     if s is None:
         s = get_ovlp(cell)
     log = logger.new_logger(cell, verbose)
-    log.note('Analyze output for the gamma point')
+    log.note('Analyze output for *gamma point*')
+    log.info('    To include the contributions from k-points, transform to a '
+             'supercell then run the population analysis on the supercell\n'
+             '        from pyscf.pbc.tools import k2gamma\n'
+             '        k2gamma.k2gamma(mf).mulliken_meta()')
     log.note("KRHF mulliken_meta")
     dm_ao_gamma = dm_ao_kpts[0,:,:].real
     s_gamma = s[0,:,:].real
@@ -502,20 +506,19 @@ class KSCF(pbchf.SCF):
         if dm_kpts is None:
             dm_kpts = lib.asarray([dm]*len(self.kpts))
 
-        if cell.dimension < 3:
-            ne = np.einsum('kij,kji->', dm_kpts, self.get_ovlp(cell)).real
-            # FIXME: consider the fractional num_electron or not? This maybe
-            # relates to the charged system.
-            nkpts = len(self.kpts)
-            nelectron = self.cell.tot_electrons(nkpts)
-            if abs(ne - nelectron) > 1e-7*nkpts:
-                logger.warn(self, 'Big error detected in the electron number '
-                            'of initial guess density matrix (Ne/cell = %g)!\n'
-                            '  This can cause huge error in Fock matrix and '
-                            'lead to instability in SCF for low-dimensional '
-                            'systems.\n  DM is normalized to the number '
-                            'of electrons', ne.mean()/nkpts)
-                dm_kpts *= (nelectron / ne).reshape(-1,1,1)
+        ne = np.einsum('kij,kji->', dm_kpts, self.get_ovlp(cell)).real
+        # FIXME: consider the fractional num_electron or not? This maybe
+        # relate to the charged system.
+        nkpts = len(self.kpts)
+        nelectron = float(self.cell.tot_electrons(nkpts))
+        if abs(ne - nelectron) > 1e-7*nkpts:
+            logger.debug(self, 'Big error detected in the electron number '
+                        'of initial guess density matrix (Ne/cell = %g)!\n'
+                        '  This can cause huge error in Fock matrix and '
+                        'lead to instability in SCF for low-dimensional '
+                        'systems.\n  DM is normalized wrt the number '
+                        'of electrons %s', ne/nkpts, nelectron/nkpts)
+            dm_kpts *= (nelectron / ne).reshape(-1,1,1)
         return dm_kpts
 
     def init_guess_by_1e(self, cell=None):
@@ -649,6 +652,9 @@ class KSCF(pbchf.SCF):
         return mulliken_meta(cell, dm, s=s, verbose=verbose,
                              pre_orth_method=pre_orth_method)
 
+    def mulliken_pop(self):
+        raise NotImplementedError
+
     get_rho = get_rho
 
     @lib.with_doc(dip_moment.__doc__)
@@ -686,6 +692,19 @@ class KSCF(pbchf.SCF):
         from pyscf.pbc.x2c import sfx2c1e
         return sfx2c1e.sfx2c1e(self)
     x2c = x2c1e = sfx2c1e
+
+    def to_rhf(self, mf):
+        '''Convert the input mean-field object to a KRHF/KROHF/KRKS/KROKS object'''
+        return addons.convert_to_rhf(mf)
+
+    def to_uhf(self, mf):
+        '''Convert the input mean-field object to a KUHF/KUKS object'''
+        return addons.convert_to_uhf(mf)
+
+    def to_ghf(self, mf):
+        '''Convert the input mean-field object to a KGHF/KGKS object'''
+        return addons.convert_to_ghf(mf)
+
 
 class KRHF(KSCF, pbchf.RHF):
     def check_sanity(self):

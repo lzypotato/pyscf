@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,6 +25,9 @@ import pyscf
 from pyscf import lib
 from pyscf import gto
 from pyscf import df
+from pyscf import scf
+from pyscf import mcscf
+from pyscf import grad
 from pyscf.lib import logger
 
 
@@ -61,10 +64,8 @@ def mm_charge(scf_method, coords, charges, unit=None):
     >>> mf.kernel()
     -101.940495711284
     '''
-    from pyscf.scf import hf
-    from pyscf.mcscf import casci
-    assert(isinstance(scf_method, hf.SCF) or
-           isinstance(scf_method, casci.CASCI))
+    assert(isinstance(scf_method, scf.hf.SCF) or
+           isinstance(scf_method, mcscf.casci.CASCI))
 
     if unit is None:
         unit = scf_method.mol.unit
@@ -166,8 +167,7 @@ def mm_charge_grad(scf_grad, coords, charges, unit=None):
     [[-0.25912357 -0.29235976 -0.38245077]
      [-1.70497052 -1.89423883  1.2794798 ]]
     '''
-    from pyscf.grad import rhf as rhf_grad
-    assert(isinstance(scf_grad, rhf_grad.Gradients))
+    assert(isinstance(scf_grad, grad.rhf.Gradients))
     if getattr(scf_grad.base, 'with_x2c', None):
         raise NotImplementedError('X2C with QM/MM charges')
 
@@ -181,14 +181,14 @@ def mm_charge_grad(scf_grad, coords, charges, unit=None):
         coords = numpy.asarray(coords, order='C') / unit
     charges = numpy.asarray(charges)
 
-    class QMMM(scf_grad.__class__, _QMMMGrad):
-        def __init__(self):
+    grad_class = scf_grad.__class__
+    class QMMM(grad_class, _QMMMGrad):
+        def __init__(self, scf_grad):
             self.__dict__.update(scf_grad.__dict__)
 
         def dump_flags(self):
-            scf_grad.dump_flags()
-            logger.info(self, '** Add background charges for %s **',
-                        scf_grad)
+            grad_class.dump_flags(self)
+            logger.info(self, '** Add background charges for %s **', grad_class)
             if self.verbose >= logger.DEBUG1:
                 logger.debug1(self, 'Charge      Location')
                 for i, z in enumerate(charges):
@@ -198,7 +198,7 @@ def mm_charge_grad(scf_grad, coords, charges, unit=None):
         def get_hcore(self, mol=None):
             ''' (QM 1e grad) + <-d/dX i|q_mm/r_mm|j>'''
             if mol is None: mol = self.mol
-            g_qm = scf_grad.get_hcore(mol)
+            g_qm = grad_class.get_hcore(self, mol)
             nao = g_qm.shape[1]
             if pyscf.DEBUG:
                 v = 0
@@ -221,8 +221,8 @@ def mm_charge_grad(scf_grad, coords, charges, unit=None):
             return g_qm + v
 
         def grad_nuc(self, mol=None, atmlst=None):
-            if mol is None: mol = scf_grad.mol
-            g_qm = scf_grad.grad_nuc(mol, atmlst)
+            if mol is None: mol = self.mol
+            g_qm = grad_class.grad_nuc(self, mol, atmlst)
 # nuclei lattice interaction
             g_mm = numpy.empty((mol.natm,3))
             for i in range(mol.natm):
@@ -233,13 +233,18 @@ def mm_charge_grad(scf_grad, coords, charges, unit=None):
             if atmlst is not None:
                 g_mm = g_mm[atmlst]
             return g_qm + g_mm
-    return QMMM()
+    return QMMM(scf_grad)
 
 # A tag to label the derived class
 class _QMMM:
     pass
 class _QMMMGrad:
     pass
+
+# Inject QMMM interface wrapper to other modules
+scf.hf.SCF.QMMM = mm_charge
+mcscf.casci.CASCI.QMMM = mm_charge
+grad.rhf.Gradients.QMMM = mm_charge_grad
 
 if __name__ == '__main__':
     from pyscf import scf, cc, grad
@@ -256,6 +261,7 @@ if __name__ == '__main__':
     mf = mm_charge(scf.RHF(mol), coords, charges)
     print(mf.kernel()) # -76.3206550372
 
+    g = mf.nuc_grad_method().kernel()
     mfs = mf.as_scanner()
     e1 = mfs(''' O                  0.00100000    0.00000000   -0.11081188
              H                 -0.00000000   -0.84695236    0.59109389
@@ -263,14 +269,12 @@ if __name__ == '__main__':
     e2 = mfs(''' O                 -0.00100000    0.00000000   -0.11081188
              H                 -0.00000000   -0.84695236    0.59109389
              H                 -0.00000000    0.89830571    0.52404783 ''')
-    print((e1 - e2)/0.002 * lib.param.BOHR)
-    mf.nuc_grad_method().kernel()
-
+    print((e1 - e2)/0.002 * lib.param.BOHR, g[0,0])
 
     mycc = cc.ccsd.CCSD(mf)
     ecc, t1, t2 = mycc.kernel() # ecc = -0.228939687075
 
-    mycc.nuc_grad_method().kernel()
+    g = mycc.nuc_grad_method().kernel()
     ccs = mycc.as_scanner()
     e1 = ccs(''' O                  0.00100000    0.00000000   -0.11081188
              H                 -0.00000000   -0.84695236    0.59109389
@@ -278,5 +282,5 @@ if __name__ == '__main__':
     e2 = ccs(''' O                 -0.00100000    0.00000000   -0.11081188
              H                 -0.00000000   -0.84695236    0.59109389
              H                 -0.00000000    0.89830571    0.52404783 ''')
-    print((e1 - e2)/0.002 * lib.param.BOHR)
+    print((e1 - e2)/0.002 * lib.param.BOHR, g[0,0])
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,6 +29,10 @@ from pyscf.lib import logger
 from pyscf.scf import _vhf
 from pyscf.scf import cphf
 from pyscf.soscf.newton_ah import _gen_rhf_response
+
+
+# import pyscf.grad.rhf to activate nuc_grad_method method
+from pyscf.grad import rhf
 
 
 def hess_elec(hessobj, mo_energy=None, mo_coeff=None, mo_occ=None,
@@ -541,6 +545,10 @@ class Hessian(lib.StreamObject):
 
     gen_hop = gen_hop
 
+# Inject to RHF class
+from pyscf import scf
+scf.hf.RHF.Hessian = lib.class_as_method(Hessian)
+
 
 if __name__ == '__main__':
     from pyscf import gto
@@ -561,7 +569,7 @@ if __name__ == '__main__':
     mf.conv_tol = 1e-14
     mf.scf()
     n3 = mol.natm * 3
-    hobj = Hessian(mf)
+    hobj = mf.Hessian()
     e2 = hobj.kernel().transpose(0,2,1,3).reshape(n3,n3)
     print(lib.finger(e2) - -0.50693144355876429)
     #from hessian import rhf_o0

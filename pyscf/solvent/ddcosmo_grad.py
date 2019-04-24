@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ def ddcosmo_grad(grad_method, pcmobj=None):
             self.with_solvent = pcmobj
             self.de_solvent = None
             self.de_solute = None
-            self._keys = self._keys.union(['de_solvent', 'de_solute'])
+            self._keys = self._keys.union(['with_solvent', 'de_solvent', 'de_solute'])
 
         def kernel(self, dm=None, atmlst=None):
             if dm is None:
@@ -85,6 +85,16 @@ def ddcosmo_grad(grad_method, pcmobj=None):
     if pcmobj is None:
         pcmobj = ddcosmo.DDCOSMO(mf.mol)
     return WithSolventGrad(pcmobj)
+
+# Inject DDCOSMO gradients into other modules
+try:
+    from pyscf import grad
+    for mod in dir(grad):
+        if 1 or hasattr(mod, 'Gradients'):
+            mod.Gradients.DDCOSMO = ddcosmo_grad
+    del(mod, grad)
+except Exception as e:
+    print('Error for registering ddcosmo gradients: ' + str(e))
 
 
 def kernel(pcmobj, dm, verbose=None):

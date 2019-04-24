@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1026,6 +1026,10 @@ class CISD(lib.StreamObject):
 
 class RCISD(CISD):
     pass
+
+from pyscf import scf
+scf.hf.RHF.CISD = lib.class_as_method(RCISD)
+scf.rohf.ROHF.CISD = None
 
 def _cp(a):
     return numpy.array(a, copy=False, order='C')

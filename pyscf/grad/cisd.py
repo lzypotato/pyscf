@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -168,6 +168,10 @@ class Gradients(lib.StreamObject):
 
     as_scanner = as_scanner
 
+Grad = Gradients
+
+cisd.CISD.Gradients = lib.class_as_method(Gradients)
+
 
 if __name__ == '__main__':
     from pyscf import gto
@@ -187,7 +191,7 @@ if __name__ == '__main__':
 
     myci = cisd.CISD(mf)
     myci.kernel()
-    g1 = Gradients(myci).kernel()
+    g1 = myci.Gradients().kernel()
 # O     0.0000000000    -0.0000000000     0.0065498854
 # H    -0.0000000000     0.0208760610    -0.0032749427
 # H    -0.0000000000    -0.0208760610    -0.0032749427

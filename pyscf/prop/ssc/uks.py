@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,6 +48,12 @@ class SpinSpinCoupling(uhf_ssc.SpinSpinCoupling):
 
 SSC = SpinSpinCoupling
 
+from pyscf import lib
+from pyscf import dft
+dft.uks.UKS.SSC = dft.uks.UKS.SpinSpinCoupling = \
+dft.uks_symm.UKS.SSC = dft.uks_symm.UKS.SpinSpinCoupling = \
+        lib.class_as_method(SSC)
+
 if __name__ == '__main__':
     from pyscf import lib, gto, dft
 
@@ -58,7 +64,7 @@ if __name__ == '__main__':
                 basis='6-31g')
 
     mf1 = dft.UKS(mol).set(xc='b3lyp').run()
-    ssc = SSC(mf1)
+    ssc = mf1.SSC()
     ssc.with_fc = True
     ssc.with_fcsd = True
     jj = ssc.kernel()

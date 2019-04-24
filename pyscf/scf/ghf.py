@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -59,11 +59,7 @@ def init_guess_by_chkfile(mol, chkfile_name, project=None):
         project = not gto.same_basis_set(chk_mol, mol)
 
     # Check whether the two molecules are similar
-    def inertia_momentum(mol):
-        im = gto.inertia_momentum(mol._atom, mol.atom_charges(),
-                                  mol.atom_coords())
-        return scipy.linalg.eigh(im)[0]
-    if abs(inertia_momentum(mol) - inertia_momentum(chk_mol)).sum() > 0.5:
+    if abs(mol.inertia_moment() - chk_mol.inertia_moment()).sum() > 0.5:
         logger.warn(mol, "Large deviations found between the input "
                     "molecule and the molecule from chkfile\n"
                     "Initial guess density matrix may have large error.")
@@ -114,7 +110,7 @@ def get_jk(mol, dm, hermi=0,
     n_dm = dms.shape[0]
 
     dmaa = dms[:,:nao,:nao]
-    dmab = dms[:,nao:,:nao]
+    dmab = dms[:,:nao,nao:]
     dmbb = dms[:,nao:,nao:]
     dms = numpy.vstack((dmaa, dmbb, dmab))
     if dm.dtype == numpy.complex128:
@@ -449,8 +445,7 @@ class GHF(hf.SCF):
     def get_veff(self, mol=None, dm=None, dm_last=0, vhf_last=0, hermi=1):
         if mol is None: mol = self.mol
         if dm is None: dm = self.make_rdm1()
-        if (self._eri is not None or not self.direct_scf or
-            mol.incore_anyway or self._is_mem_enough()):
+        if self._eri is not None or not self.direct_scf:
             vj, vk = get_jk(mol, dm, hermi, True, True, self.get_jk)
             vhf = vj - vk
         else:

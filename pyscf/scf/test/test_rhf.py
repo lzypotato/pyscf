@@ -519,6 +519,12 @@ H     0    0.757    0.587'''
         mf_scanner.chkfile = None
         self.assertAlmostEqual(mf_scanner(mol.atom), -76.075408156235909, 9)
 
+        mol1 = gto.M(atom='H 0 0 0; H 0 0 .9', basis='cc-pvdz')
+        ref = scf.RHF(mol1).x2c().density_fit().kernel()
+        e1 = mf_scanner('H 0 0 0; H 0 0 .9')
+        self.assertAlmostEqual(e1, -1.116394048204042, 9)
+        self.assertAlmostEqual(e1, ref, 9)
+
     def test_natm_eq_0(self):
         mol = gto.M()
         mol.nelectron = 2
@@ -617,6 +623,9 @@ H     0    0.757    0.587'''
         n2_rohf.irrep_nelec['A1g'] = (4,2)
         self.assertRaises(ValueError, n2_rohf.build)
         n2_rohf.irrep_nelec['A1g'] = (0,2)
+        self.assertRaises(ValueError, n2_rohf.build)
+        n2_rohf.irrep_nelec['A1g'] = (3,2)
+        n2_rohf.irrep_nelec['A1u'] = (2,3)
         self.assertRaises(ValueError, n2_rohf.build)
 
     def test_rohf_spin_square(self):

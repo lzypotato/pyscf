@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -602,7 +602,7 @@ def dot_eri_dm(eri, dm, hermi=0):
     >>> print(j.shape)
     (3, 2, 2)
     '''
-    dm = numpy.asarray(dm)
+    dm = numpy.asarray(dm,order='C')
     nao = dm.shape[-1]
     dms = dm.reshape(-1,nao,nao)
     if eri.dtype == numpy.complex128 or eri.size == nao**4:
@@ -883,6 +883,13 @@ def mulliken_pop(mol, dm, s=None, verbose=logger.DEBUG):
 
     .. math:: \delta_i = \sum_j M_{ij}
 
+    Returns:
+        A list : pop, charges
+
+        pop : nparray
+            Mulliken population on each atomic orbitals
+        charges : nparray
+            Mulliken charges
     '''
     if s is None: s = get_ovlp(mol)
     log = logger.new_logger(mol, verbose)
@@ -930,6 +937,13 @@ def mulliken_meta(mol, dm, verbose=logger.DEBUG,
             | 'minao' : Project GTOs to MINAO basis
             | 'scf'   : Fraction-averaged RHF
 
+    Returns:
+        A list : pop, charges
+
+        pop : nparray
+            Mulliken population on each atomic orbitals
+        charges : nparray
+            Mulliken charges
     '''
     from pyscf.lo import orth
     if s is None: s = get_ovlp(mol)
@@ -1093,7 +1107,7 @@ def as_scanner(mf):
         def __init__(self, mf_obj):
             self.__dict__.update(mf_obj.__dict__)
             mf_obj = self
-            # partial deepcopy to avoid overwriting existing object
+            # partial deepcopy to avoid overwriting existing objects
             while mf_obj is not None:
                 if getattr(mf_obj, 'with_df', None):
                     mf_obj.with_df = copy.copy(mf_obj.with_df)
@@ -1130,15 +1144,41 @@ def as_scanner(mf):
                     mf_obj.grids.coords = None
                     mf_obj.grids.weights = None
                     mf_obj._dm_last = None
+                if getattr(mf_obj, 'with_solvent', None):
+                    mf_obj.with_solvent.mol = mol
+                    mf_obj.with_solvent.grids.mol = mol
+                    mf_obj.with_solvent.grids.coords = None
+                    mf_obj.with_solvent.grids.weights = None
+                    mf_obj.with_solvent._solver_ = None
                 mf_obj = getattr(mf_obj, '_scf', None)
 
-            if self.mo_coeff is None:
+            if 'dm0' in kwargs:
+                dm0 = kwargs.pop('dm0')
+            elif self.mo_coeff is None:
                 dm0 = None
             elif self.chkfile:
                 dm0 = self.from_chk(self.chkfile)
             #elif mol.natm == 0: self._eri = mol._eri?
             else:
+                from pyscf.scf import addons
                 dm0 = self.make_rdm1()
+                # dm0 form last calculation cannot be used in the current
+                # calculation if a completely different system is given.
+                # Obviously, the systems are very different if the number of
+                # basis functions are different.
+                # TODO: A robust check should include more comparison on
+                # various attributes between current `mol` and the `mol` in
+                # last calculation.
+                if dm0.shape[-1] != mol.nao:
+                    #TODO:
+                    #if numpy.any(last_mol.atom_charges() != mol.atom_charges()):
+                    #    dm0 = None
+                    #elif non-relativistic:
+                    #    addons.project_dm_nr2nr(last_mol, dm0, last_mol)
+                    #else:
+                    #    addons.project_dm_r2r(last_mol, dm0, last_mol)
+                    dm0 = None
+            self.mo_coeff = None  # To avoid last mo_coeff being used by SOSCF
             e_tot = self.kernel(dm0=dm0, **kwargs)
             return e_tot
 
@@ -1286,8 +1326,7 @@ class SCF(lib.StreamObject):
         if mol is None: mol = self.mol
         if self.verbose >= logger.WARN:
             self.check_sanity()
-        if (self.direct_scf and not mol.incore_anyway and
-            not self._is_mem_enough()):
+        if not mol.incore_anyway and not self._is_mem_enough():
 # Should I lazy initialize direct SCF?
             self.opt = self.init_direct_scf(mol)
         return self
@@ -1298,11 +1337,8 @@ class SCF(lib.StreamObject):
 
         logger.info(self, '\n')
         logger.info(self, '******** %s ********', self.__class__)
-        method = []
-        cls = self.__class__
-        while cls != SCF:
-            method.append(cls.__name__)
-            cls = cls.__base__
+        method = [cls.__name__ for cls in self.__class__.__mro__
+                  if issubclass(cls, SCF) and cls != SCF]
         logger.info(self, 'method = %s', '-'.join(method))
         logger.info(self, 'initial guess = %s', self.init_guess)
         logger.info(self, 'damping factor = %g', self.damp)
@@ -1312,7 +1348,7 @@ class SCF(lib.StreamObject):
             logger.info(self, 'DIIS start cycle = %d', self.diis_start_cycle)
             logger.info(self, 'DIIS space = %d', self.diis.space)
         elif self.diis:
-            logger.info(self, 'DIIS = %s', diis.SCF_DIIS)
+            logger.info(self, 'DIIS = %s', self.DIIS)
             logger.info(self, 'DIIS start cycle = %d', self.diis_start_cycle)
             logger.info(self, 'DIIS space = %d', self.diis_space)
         logger.info(self, 'SCF tol = %g', self.conv_tol)
@@ -1491,11 +1527,7 @@ class SCF(lib.StreamObject):
 
     def init_direct_scf(self, mol=None):
         if mol is None: mol = self.mol
-        if mol.cart:
-            intor = 'int2e_cart'
-        else:
-            intor = 'int2e_sph'
-        opt = _vhf.VHFOpt(mol, intor, 'CVHFnrs8_prescreen',
+        opt = _vhf.VHFOpt(mol, 'int2e', 'CVHFnrs8_prescreen',
                           'CVHFsetnr_direct_scf',
                           'CVHFsetnr_direct_scf_dm')
         opt.direct_scf_tol = self.direct_scf_tol
@@ -1658,6 +1690,21 @@ class SCF(lib.StreamObject):
             raise TypeError('First argument of .apply method must be a '
                             'function/class or a name (string) of a method.')
 
+    def to_rhf(self, mf):
+        '''Convert the input mean-field object to a RHF/ROHF/RKS/ROKS object'''
+        from pyscf.scf import addons
+        return addons.convert_to_rhf(mf)
+
+    def to_uhf(self, mf):
+        '''Convert the input mean-field object to a UHF/UKS object'''
+        from pyscf.scf import addons
+        return addons.convert_to_uhf(mf)
+
+    def to_ghf(self, mf):
+        '''Convert the input mean-field object to a GHF/GKS object'''
+        from pyscf.scf import addons
+        return addons.convert_to_ghf(mf)
+
 
 ############
 
@@ -1685,8 +1732,22 @@ class RHF(SCF):
             vj, vk = SCF.get_jk(self, mol, dm, hermi)
         return vj, vk
 
+    @lib.with_doc(get_veff.__doc__)
+    def get_veff(self, mol=None, dm=None, dm_last=0, vhf_last=0, hermi=1):
+        if mol is None: mol = self.mol
+        if dm is None: dm = self.make_rdm1()
+        if self._eri is not None or not self.direct_scf:
+            vj, vk = self.get_jk(mol, dm, hermi)
+            vhf = vj - vk * .5
+        else:
+            ddm = numpy.asarray(dm) - numpy.asarray(dm_last)
+            vj, vk = self.get_jk(mol, ddm, hermi)
+            vhf = vj - vk * .5
+            vhf += numpy.asarray(vhf_last)
+        return vhf
+
     def convert_from_(self, mf):
-        '''Convert given mean-field object to RHF/ROHF'''
+        '''Convert the input mean-field object to RHF/ROHF'''
         from pyscf.scf import addons
         return addons.convert_to_rhf(mf, out=self)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2014-2018 The PySCF Developers. All Rights Reserved.
+# Copyright 2014-2019 The PySCF Developers. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -207,8 +207,12 @@ class X2C_UHF(hf.SCF):
     def build(self, mol=None):
         if self.verbose >= logger.WARN:
             self.check_sanity()
+<<<<<<< HEAD
         if self.direct_scf:
             self.opt = self.init_direct_scf(self.mol)
+=======
+        self.opt = self.init_direct_scf(self.mol)
+>>>>>>> 118172e066fe3f13754cab001a6a04b49ff85951
 
     def dump_flags(self):
         hf.SCF.dump_flags(self)
@@ -302,8 +306,18 @@ class X2C_UHF(hf.SCF):
 UHF = X2C_UHF
 
 try:
+<<<<<<< HEAD
     from pyscf.dft import rks, dks
     class X2C_UKS(X2C_UHF):
+=======
+    from pyscf.dft import rks, dks, r_numint
+    class X2C_UKS(X2C_UHF):
+        def __init__(self, mol):
+            X2C_UHF.__init__(self, mol)
+            rks._dft_common_init_(self)
+            self._numint = r_numint.RNumInt()
+
+>>>>>>> 118172e066fe3f13754cab001a6a04b49ff85951
         def dump_flags(self):
             hf.SCF.dump_flags(self)
             logger.info(self, 'XC functionals = %s', self.xc)
@@ -557,3 +571,9 @@ if __name__ == '__main__':
     method.with_x2c.approx = 'atom1e'
     print('E(X2C1E) = %.12g' % method.kernel())
 
+<<<<<<< HEAD
+=======
+    method = UKS(mol)
+    ex2c = method.kernel()
+    print('E(X2C1E) = %.12g' % ex2c)
+>>>>>>> 118172e066fe3f13754cab001a6a04b49ff85951
