@@ -1,0 +1,109 @@
+
+
+**************************************************************
+Dice  Copyright (C) 2017  Sandeep Sharma
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
+
+
+Author:       Sandeep Sharma
+Contributors: James E Smith, Adam A Holmes, Bastien Mussard
+For detailed documentation on Dice please visit
+https://sanshar.github.io/Dice/
+and our group page for up to date information on other projects
+http://www.colorado.edu/lab/sharmagroup/
+**************************************************************
+
+
+**************************************************************
+INPUT FILE
+**************************************************************
+#system
+nocc 12
+0 2 4 6 8 10 1 3 5 7 9 11 
+nroots 1
+#variational
+schedule
+0	0.001
+3	0.0005
+end
+davidsonTol 5e-05
+dE 1e-08
+maxiter 9
+#pt
+deterministic
+epsilon2 1e-08
+epsilon2Large 1000
+targetError 0.0001
+sampleN 200
+#misc
+noio
+prefix ./node0
+DoRDM
+
+
+1000
+
+
+**************************************************************
+SELECTING REFERENCE DETERMINANT(S)
+**************************************************************
+2 2 2 2 2   2 0 0  Given HF Energy:     -149.5357964351
+2 2 2 2 2   0 0 2  Est. Det. Energy:    -148.3932543897
+
+
+**************************************************************
+VARIATIONAL STEP  
+**************************************************************
+Iter Root       Eps1   #Var. Det.               Energy   #Davidson     Time(s)
+   0    0    1.00e-03          29      -149.6640358709         10        0.00
+   1    0    1.00e-03          94      -149.6782260485         12        0.01
+   2    0    1.00e-03         110      -149.6786353038         10        0.01
+   3    0    5.00e-04         110      -149.6786353038          1        0.01
+Performing final tight davidson with tol: 5e-05
+Exiting variational iterations
+
+Calculating 2-RDM
+E(one-body) from 2RDM:     -83.6350186221
+E(two-body) from 2RDM:      36.2749269001
+E from 2RDM:              -149.6786353038
+
+Variational calculation result
+Root             Energy     Time(s)
+   0     -149.6786353038        0.06
+
+Printing most important determinants
+ Det     weight  Determinant string
+State :   0
+   0      -0.6800617933  2 2 2 2 2   2 0 0 
+   1       0.6791495803  2 2 2 2 2   0 2 0 
+   2       0.1512033753  2 2 2 2 0   2 2 0 
+   3      -0.1509630370  2 2 0 2 2   2 2 0 
+   4      -0.0495238194  2 2 2 b a   2 b a 
+
+
+**************************************************************
+PERTURBATION THEORY STEP  
+**************************************************************
+Deterministic PT calculation converged
+PTEnergy:    -149.6786353038
+Time(s):        0.19
+
+Now calculating PT RDM
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+Dice: /public/software/eigen-3.3.7/Eigen/src/Core/DenseCoeffsBase.h:365: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator()(Eigen::Index, Eigen::Index) [with Derived = Eigen::Matrix<double, -1, -1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `row >= 0 && row < rows() && col >= 0 && col < cols()' failed.
+APPLICATION TERMINATED WITH THE EXIT STRING: Aborted (signal 6)

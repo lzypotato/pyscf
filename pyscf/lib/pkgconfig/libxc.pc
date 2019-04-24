@@ -1,0 +1,11 @@
+prefix=/public/home/ugrs1_LJ/library
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libxc
+Description: Library of exchange and correlation functionals to be used in DFT codes
+Requires: 
+Version: 3.0.0
+Libs: -L${libdir} -lxc
+Cflags: -I${includedir}
