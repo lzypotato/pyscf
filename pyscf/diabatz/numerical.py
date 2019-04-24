@@ -5,7 +5,7 @@ from scipy.special import comb
 def numerical_NAC(mc1, mc2, nelec, ncas, nelecas, overlapAllAO, dR, nstate1=0, nstate2=1):
     '''
     Numerical non-adiabatic-coupling calculator for multi-electrons-wavefunction.
-    It is based on equ(5) in J. Phys. Chem. Lett. 2015, 6, 4200−4203.
+    It is based on equ(5) in J. Phys. Chem. Lett. 2015, 6, 4200-4203.
 
     overlapAllAO:   Overlap between all atomic orbitals from mol12, which can be divided into 
                     overlap between mol1 & mol1, mol1 & mol2, mol2 & mol1 and mol2 & mol2. 
@@ -74,7 +74,7 @@ def get_ovlp_nonothorgonal(ci1, ci2, ncas, nelecas, nelec, overlapMO):
 def get_ovlp_nonothorgonal_configurations(overlapMO, nelec, ncas, nelecas, config1, config2):
     '''
     Calculate overlap between nonorthogonal configurations. 
-    It is based on L\"owdin Formula equ(8) in J. Phys. Chem. Lett. 2015, 6, 4200−4203.
+    It is based on L\"owdin Formula equ(8) in J. Phys. Chem. Lett. 2015, 6, 4200-4203.
     '''
     nelecore = nelec - nelecas
     detTMP = numpy.zeros((nelec, nelec))
