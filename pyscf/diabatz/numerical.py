@@ -9,6 +9,7 @@ def numerical_NAC(mc1, mc2, nelec, ncas, nelecas, overlapAllAO, dR, nstate1=0, n
 
     overlapAllAO:   Overlap between all atomic orbitals from mol12, which can be divided into 
                     overlap between mol1 & mol1, mol1 & mol2, mol2 & mol1 and mol2 & mol2. 
+                    
                     Only the second one will be used for calculate overlapMO.
     
     overlapAO:      Second part of overlapAllAO.
@@ -17,7 +18,7 @@ def numerical_NAC(mc1, mc2, nelec, ncas, nelecas, overlapAllAO, dR, nstate1=0, n
 
     overlapCAS:     Overlap between mcscf wavefunction. 
     '''
-    overlapAO = overlapAllAO[:len(overlapAllAO)/2, len(overlapAllAO)/2:]
+    overlapAO = overlapAllAO[:len(overlapAllAO)//2, len(overlapAllAO)//2:]
     nelecore = nelec - nelecas
     overlapMO = numpy.zeros((nelecore//2+ncas, nelecore//2+ncas))
     
