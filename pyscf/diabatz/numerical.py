@@ -1,6 +1,5 @@
-import numpy
+import numpy, scipy, itertools
 from scipy.special import comb
-
 
 def numerical_NAC(mc1, mc2, nelec, ncas, nelecas, overlapAllAO, dR, nstate1=0, nstate2=1):
     '''
@@ -137,20 +136,38 @@ def configurations_generator(ncas, nelecas):
 
 def combination_generator(N, k):
     '''
-    Generate C_N^k combinations in the order of ci_coeff using recursive function.
-    '''
-    NSize = int(comb(N, k))
-    tmp = numpy.zeros((NSize, k))
+    Generate C_N^k combinations in the order of ci_coeff 
+    using itertools.combinations function. In PySCF, configurations
+    are generated in a reverse order of combinations. 
 
-    def recursion(tmp, ii, k, n, ncount = [0]):
-        if(ii < k):
-            for jj in range(k - ii, n):
-                for nn in range(ncount[0], tmp.shape[0]):
-                    tmp[nn][-ii] = n - 1
-                recursion(tmp, ii + 1, k, n = jj, ncount = ncount)
-        else:
-            tmp[ncount[0]][-ii] = n - 1
-            ncount[0] = ncount[0] + 1
-    
-    recursion(tmp, 0, k, N+1)
+    There is also an older version using recursion function, 
+    but it suffers from a quite low speed.
+    '''
+    tmp1 = numpy.array(list(itertools.combinations(sorted(list(range(N)), reverse = True), k)))
+    tmp = numpy.zeros((tmp1.shape[0], tmp1.shape[1]))
+    # Turn tmp1 to a reverse order
+    for ii in range(tmp1.shape[0]):
+        for jj in range(tmp1.shape[1]):
+            iitmp = - ii - 1
+            jjtmp = - jj - 1
+            if(ii == 0):
+                iitmp = tmp1.shape[0] - 1
+            if(jj == 0):
+                jjtmp = tmp1.shape[1] - 1
+            tmp[ii][jj] = tmp1[iitmp][jjtmp]
+
     return tmp
+    # NSize = int(comb(N, k))
+    # tmp = numpy.zeros((NSize, k))
+    # def recursion(tmp, ii, k, n, ncount = [0]):
+    #     if(ii < k):
+    #         for jj in range(k - ii, n):
+    #             for nn in range(ncount[0], tmp.shape[0]):
+    #                 tmp[nn][-ii] = n - 1
+    #             recursion(tmp, ii + 1, k, n = jj, ncount = ncount)
+    #     else:
+    #         tmp[ncount[0]][-ii] = n - 1
+    #         ncount[0] = ncount[0] + 1  
+    # recursion(tmp, 0, k, N+1)
+    # return tmp
+    
