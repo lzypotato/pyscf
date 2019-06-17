@@ -29,8 +29,8 @@ def numerical_NAC(mc1, mc2, nelec, ncas, nelecas, overlapAllAO, dR, nstate11 = 0
             overlapMO[ii][jj] = numpy.einsum("i,ij,j->", moTmp1, overlapAO, moTmp2)
     
     # Convert ci_coeff matrix to one-dimensional array
-    ciRow = mc1.ci[nstate1].shape[0]
-    ciColumn = mc1.ci[nstate1].shape[1]
+    ciRow = mc1.ci[nstate11].shape[0]
+    ciColumn = mc1.ci[nstate11].shape[1]
 
     ci1 = numpy.zeros((2,ciRow*ciColumn))
     ci2 = numpy.zeros((2,ciRow*ciColumn))
