@@ -41,13 +41,13 @@ class NAC(object):
             mol12.spin = divmod(mc1.mol.spin + mc2.mol.spin, 2)[1]
             mol12.unit = mc1.mol.unit
             mol12.build()
-            self.overlapAO = mol12.intor("int1e_ovlp_sph")
+            self.overlapAO = mol12.intor("int1e_ovlp")
         
 
     def kernel(self):
         if(self.method == "numerical"):
             return numerical.numerical_NAC(self.mc1, self.mc2, self.nelecTotal, self.ncas, self.nelecas, self.overlapAO, self.dR, self.nstate1, self.nstate2)
         else:
-            print("ERROR! Only numerical mthod is supported!")
+            print("ERROR! Only numerical method is supported!")
             exit()
         

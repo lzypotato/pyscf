@@ -1,7 +1,7 @@
 import numpy, scipy, itertools
 from scipy.special import comb
 
-def numerical_NAC(mc1, mc2, nelec, ncas, nelecas, overlapAllAO, dR, nstate1=0, nstate2=1):
+def numerical_NAC(mc1, mc2, nelec, ncas, nelecas, overlapAllAO, dR, nstate11 = 0, nstate12 = 1, nstate21 = 0, nstate22 = 1):
     '''
     Numerical non-adiabatic-coupling calculator for multi-electrons-wavefunction.
     It is based on equ(5) in J. Phys. Chem. Lett. 2015, 6, 4200-4203.
@@ -35,10 +35,10 @@ def numerical_NAC(mc1, mc2, nelec, ncas, nelecas, overlapAllAO, dR, nstate1=0, n
     ci1 = numpy.zeros((2,ciRow*ciColumn))
     ci2 = numpy.zeros((2,ciRow*ciColumn))
     for ii in range(len(ci1[0])):
-        ci1[0][ii] = mc1.ci[nstate1][ii//ciColumn][ii-ii//ciColumn*ciColumn]
-        ci2[0][ii] = mc2.ci[nstate1][ii//ciColumn][ii-ii//ciColumn*ciColumn]
-        ci1[1][ii] = mc1.ci[nstate2][ii//ciColumn][ii-ii//ciColumn*ciColumn]
-        ci2[1][ii] = mc2.ci[nstate2][ii//ciColumn][ii-ii//ciColumn*ciColumn]
+        ci1[0][ii] = mc1.ci[nstate11][ii//ciColumn][ii-ii//ciColumn*ciColumn]
+        ci2[0][ii] = mc2.ci[nstate21][ii//ciColumn][ii-ii//ciColumn*ciColumn]
+        ci1[1][ii] = mc1.ci[nstate12][ii//ciColumn][ii-ii//ciColumn*ciColumn]
+        ci2[1][ii] = mc2.ci[nstate22][ii//ciColumn][ii-ii//ciColumn*ciColumn]
     
     # Calculate overlapCAS and NAC using equ(5) in the literature
     overlapCAS = get_ovlp_nonothorgonal(ci1, ci2, ncas, nelecas, nelec, overlapMO)
