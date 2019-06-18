@@ -643,7 +643,7 @@ class UCCSD(ccsd.CCSD):
         if l1 is None: l1 = self.l1
         if l2 is None: l2 = self.l2
         if l1 is None: l1, l2 = self.solve_lambda(t1, t2)
-        return uccsd_rdm.make_rdm1(self, t1, t2, l1, l2, ao_repr=False)
+        return uccsd_rdm.make_rdm1(self, t1, t2, l1, l2, ao_repr=ao_repr)
 
     def make_rdm2(self, t1=None, t2=None, l1=None, l2=None):
         '''2-particle density matrix in spin-oribital basis.
@@ -727,6 +727,17 @@ class UCCSD(ccsd.CCSD):
         if nocc is None: nocc = self.nocc
         if nmo is None: nmo = self.nmo
         return vector_to_amplitudes(vector, nmo, nocc)
+
+    def vector_size(self, nmo=None, nocc=None):
+        if nocc is None: nocc = self.nocc
+        if nmo is None: nmo = self.nmo
+        nocca, noccb = nocc
+        nmoa, nmob = nmo
+        nvira, nvirb = nmoa-nocca, nmob-noccb
+        sizea = nocca * nvira + nocca*(nocca-1)//2*nvira*(nvira-1)//2
+        sizeb = noccb * nvirb + noccb*(noccb-1)//2*nvirb*(nvirb-1)//2
+        sizeab = nocca * noccb * nvira * nvirb
+        return sizea + sizeb + sizeab
 
     def amplitudes_from_rccsd(self, t1, t2):
         return amplitudes_from_rccsd(t1, t2)

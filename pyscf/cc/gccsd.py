@@ -176,6 +176,12 @@ class GCCSD(ccsd.CCSD):
         if nmo is None: nmo = self.nmo
         return vector_to_amplitudes(vec, nmo, nocc)
 
+    def vector_size(self, nmo=None, nocc=None):
+        if nocc is None: nocc = self.nocc
+        if nmo is None: nmo = self.nmo
+        nvir = nmo - nocc
+        return nocc * nvir + nocc*(nocc-1)//2*nvir*(nvir-1)//2
+
     def amplitudes_from_rccsd(self, t1, t2, orbspin=None):
         return amplitudes_from_rccsd(t1, t2, orbspin)
 
@@ -236,7 +242,7 @@ class GCCSD(ccsd.CCSD):
         if l1 is None: l1 = self.l1
         if l2 is None: l2 = self.l2
         if l1 is None: l1, l2 = self.solve_lambda(t1, t2)
-        return gccsd_rdm.make_rdm1(self, t1, t2, l1, l2, ao_repr=False)
+        return gccsd_rdm.make_rdm1(self, t1, t2, l1, l2, ao_repr=ao_repr)
 
     def make_rdm2(self, t1=None, t2=None, l1=None, l2=None):
         '''2-particle density matrix in MO space.  The density matrix is

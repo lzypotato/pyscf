@@ -16,10 +16,12 @@ class NAC(object):
 
     method:     Only "numerical" is supported now.
     '''
-    def __init__(self, mc1, mc2 = None, dR = None, overlapAO = [], nstate1 = 0, nstate2 = 1, method = "numerical"):
+    def __init__(self, mc1, mc2 = None, dR = None, overlapAO = [], nstate11 = 0, nstate12 = 1, nstate21 = 0, nstate22 = 1, method = "numerical"):
         self.mc1 = mc1
-        self.nstate1 = nstate1
-        self.nstate2 = nstate2
+        self.nstate11 = nstate11
+        self.nstate12 = nstate12
+        self.nstate21 = nstate21
+        self.nstate22 = nstate22
         self.nelecTotal = mc1.mol.nelec[0] + mc1.mol.nelec[1]
         self.ncas = mc1.ncas
         self.nelecas = mc1.nelecas[0] + mc1.nelecas[1]
@@ -46,7 +48,7 @@ class NAC(object):
 
     def kernel(self):
         if(self.method == "numerical"):
-            return numerical.numerical_NAC(self.mc1, self.mc2, self.nelecTotal, self.ncas, self.nelecas, self.overlapAO, self.dR, self.nstate1, self.nstate2)
+            return numerical.numerical_NAC(self.mc1, self.mc2, self.nelecTotal, self.ncas, self.nelecas, self.overlapAO, self.dR, self.nstate11, self.nstate12, self.nstate21, self.nstate22)
         else:
             print("ERROR! Only numerical method is supported!")
             exit()

@@ -23,11 +23,19 @@ import geometric
 import geometric.molecule
 #from geometric import molecule
 from pyscf import lib
-from pyscf.geomopt.addons import as_pyscf_method, dump_mol_geometry
+from pyscf.geomopt.addons import (as_pyscf_method, dump_mol_geometry,
+                                  symmetrize)
 from pyscf import __config__
 
+try:
+    from geometric import internal, optimize, nifty, engine, molecule
+except ImportError:
+    msg = ('Geometry optimizer geomeTRIC not found.\ngeomeTRIC library '
+           'can be found on github https://github.com/leeping/geomeTRIC.\n'
+           'You can install geomeTRIC with "pip install geometric"')
+    raise ImportError(msg)
+
 # Overwrite units defined in geomeTRIC
-from geometric import internal, optimize, nifty, engine, molecule
 internal.ang2bohr = optimize.ang2bohr = nifty.ang2bohr = 1./lib.param.BOHR
 engine.bohr2ang = internal.bohr2ang = molecule.bohr2ang = nifty.bohr2ang = \
         optimize.bohr2ang = lib.param.BOHR
@@ -67,6 +75,10 @@ class PySCFEngine(geometric.engine.Engine):
         coords = coords.reshape(-1,3)
         if g_scanner.verbose >= lib.logger.NOTE:
             dump_mol_geometry(mol, coords*lib.param.BOHR)
+
+        if mol.symmetry:
+            coords = symmetrize(mol, coords)
+
         mol.set_geom_(coords, unit='Bohr')
         energy, gradients = g_scanner(mol)
 
@@ -113,6 +125,15 @@ def kernel(method, assert_convergence=ASSERT_CONV,
     engine.maxsteps = maxsteps
     # To avoid overwritting method.mol
     engine.mol = g_scanner.mol.copy()
+
+    # When symmetry is enabled, the molecule may be shifted or rotated to make
+    # the z-axis be the main axis. The transformation can cause inconsistency
+    # between the optimization steps. The transformation is muted by setting
+    # an explict point group to the keyword mol.symmetry (see symmetry
+    # detection code in Mole.build function).
+    if engine.mol.symmetry:
+        engine.mol.symmetry = engine.mol.topgroup
+
     engine.assert_convergence = assert_convergence
     try:
         m = geometric.optimize.run_optimizer(customengine=engine, input=tmpf,
@@ -170,6 +191,7 @@ class GeometryOptimizer(lib.StreamObject):
                 kernel(self.method, callback=self.callback,
                        maxsteps=self.max_cycle, **self.params)
         return self.mol
+    optimize = kernel
 
 class NotConvergedError(RuntimeError):
     pass

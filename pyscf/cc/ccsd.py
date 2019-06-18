@@ -750,11 +750,18 @@ def as_scanner(cc):
             else:
                 mol = self.mol.set_geom_(mol_or_geom, inplace=False)
 
+            if self.t2 is not None:
+                last_size = self.vector_size()
+            else:
+                last_size = 0
+
             mf_scanner = self._scf
             mf_scanner(mol)
             self.mol = mol
             self.mo_coeff = mf_scanner.mo_coeff
             self.mo_occ = mf_scanner.mo_occ
+            if last_size != self.vector_size():
+                self.t1 = self.t2 = None
             self.kernel(self.t1, self.t2, **kwargs)
             return self.e_tot
     return CCSD_Scanner(cc)
@@ -1064,7 +1071,7 @@ http://sunqm.net/pyscf/code-rule.html#api-rules for the details of API conventio
         if l1 is None: l1 = self.l1
         if l2 is None: l2 = self.l2
         if l1 is None: l1, l2 = self.solve_lambda(t1, t2)
-        return ccsd_rdm.make_rdm1(self, t1, t2, l1, l2, ao_repr=False)
+        return ccsd_rdm.make_rdm1(self, t1, t2, l1, l2, ao_repr=ao_repr)
 
     def make_rdm2(self, t1=None, t2=None, l1=None, l2=None):
         '''2-particle density matrix in MO space.  The density matrix is
@@ -1135,6 +1142,13 @@ http://sunqm.net/pyscf/code-rule.html#api-rules for the details of API conventio
         if nocc is None: nocc = self.nocc
         if nmo is None: nmo = self.nmo
         return vector_to_amplitudes(vec, nmo, nocc)
+
+    def vector_size(self, nmo=None, nocc=None):
+        if nocc is None: nocc = self.nocc
+        if nmo is None: nmo = self.nmo
+        nvir = nmo - nocc
+        nov = nocc * nvir
+        return nov + nov*(nov+1)//2
 
     def dump_chk(self, t1_t2=None, frozen=None, mo_coeff=None, mo_occ=None):
         if not self.chkfile:

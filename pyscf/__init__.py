@@ -35,9 +35,14 @@ to try out the package::
 
 '''
 
-__version__ = '1.6.1'
+__version__ = '1.6.2'
 
 import os
+# Avoid too many threads being created in OMP loops.
+# See issue https://github.com/pyscf/pyscf/issues/317
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+
 import sys
 from distutils.version import LooseVersion
 import numpy

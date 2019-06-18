@@ -26,6 +26,7 @@ import time
 from functools import reduce
 import numpy
 import scipy.linalg
+import h5py
 from pyscf import gto
 from pyscf import lib
 from pyscf.lib import logger
@@ -1107,8 +1108,10 @@ def as_scanner(mf):
         def __init__(self, mf_obj):
             self.__dict__.update(mf_obj.__dict__)
             mf_obj = self
+            mf_objs = []
             # partial deepcopy to avoid overwriting existing objects
             while mf_obj is not None:
+                mf_objs.append(mf_obj)
                 if getattr(mf_obj, 'with_df', None):
                     mf_obj.with_df = copy.copy(mf_obj.with_df)
                 if getattr(mf_obj, 'with_x2c', None):
@@ -1117,6 +1120,9 @@ def as_scanner(mf):
                     mf_obj.grids = copy.copy(mf_obj.grids)
                     mf_obj._numint = copy.copy(mf_obj._numint)
                 if getattr(mf_obj, '_scf', None):
+                    # avoid endless loop caused by circular reference
+                    if mf_obj._scf in mf_objs:
+                        break
                     mf_obj._scf = copy.copy(mf_obj._scf)
                     mf_obj = mf_obj._scf
                 else:
@@ -1129,7 +1135,11 @@ def as_scanner(mf):
                 mol = self.mol.set_geom_(mol_or_geom, inplace=False)
 
             mf_obj = self
-            while mf_obj is not None:
+            mf_objs = []
+            while (mf_obj is not None and
+                   # avoid endless loop caused by circular reference
+                   mf_obj not in mf_objs):
+                mf_objs.append(mf_obj)
                 mf_obj.mol = mol
                 mf_obj.opt = None
                 mf_obj._eri = None
@@ -1156,11 +1166,10 @@ def as_scanner(mf):
                 dm0 = kwargs.pop('dm0')
             elif self.mo_coeff is None:
                 dm0 = None
-            elif self.chkfile:
+            elif self.chkfile and h5py.is_hdf5(self.chkfile):
                 dm0 = self.from_chk(self.chkfile)
             #elif mol.natm == 0: self._eri = mol._eri?
             else:
-                from pyscf.scf import addons
                 dm0 = self.make_rdm1()
                 # dm0 form last calculation cannot be used in the current
                 # calculation if a completely different system is given.
@@ -1171,6 +1180,7 @@ def as_scanner(mf):
                 # last calculation.
                 if dm0.shape[-1] != mol.nao:
                     #TODO:
+                    #from pyscf.scf import addons
                     #if numpy.any(last_mol.atom_charges() != mol.atom_charges()):
                     #    dm0 = None
                     #elif non-relativistic:
@@ -1331,36 +1341,37 @@ class SCF(lib.StreamObject):
             self.opt = self.init_direct_scf(mol)
         return self
 
-    def dump_flags(self):
-        if self.verbose < logger.INFO:
+    def dump_flags(self, verbose=None):
+        log = logger.new_logger(self, verbose)
+        if log.verbose < logger.INFO:
             return self
 
-        logger.info(self, '\n')
-        logger.info(self, '******** %s ********', self.__class__)
+        log.info('\n')
+        log.info('******** %s ********', self.__class__)
         method = [cls.__name__ for cls in self.__class__.__mro__
                   if issubclass(cls, SCF) and cls != SCF]
-        logger.info(self, 'method = %s', '-'.join(method))
-        logger.info(self, 'initial guess = %s', self.init_guess)
-        logger.info(self, 'damping factor = %g', self.damp)
-        logger.info(self, 'level shift factor = %s', self.level_shift)
+        log.info('method = %s', '-'.join(method))
+        log.info('initial guess = %s', self.init_guess)
+        log.info('damping factor = %g', self.damp)
+        log.info('level shift factor = %s', self.level_shift)
         if isinstance(self.diis, lib.diis.DIIS):
-            logger.info(self, 'DIIS = %s', self.diis)
-            logger.info(self, 'DIIS start cycle = %d', self.diis_start_cycle)
-            logger.info(self, 'DIIS space = %d', self.diis.space)
+            log.info('DIIS = %s', self.diis)
+            log.info('DIIS start cycle = %d', self.diis_start_cycle)
+            log.info('DIIS space = %d', self.diis.space)
         elif self.diis:
-            logger.info(self, 'DIIS = %s', self.DIIS)
-            logger.info(self, 'DIIS start cycle = %d', self.diis_start_cycle)
-            logger.info(self, 'DIIS space = %d', self.diis_space)
-        logger.info(self, 'SCF tol = %g', self.conv_tol)
-        logger.info(self, 'SCF gradient tol = %s', self.conv_tol_grad)
-        logger.info(self, 'max. SCF cycles = %d', self.max_cycle)
-        logger.info(self, 'direct_scf = %s', self.direct_scf)
+            log.info('DIIS = %s', self.DIIS)
+            log.info('DIIS start cycle = %d', self.diis_start_cycle)
+            log.info('DIIS space = %d', self.diis_space)
+        log.info('SCF tol = %g', self.conv_tol)
+        log.info('SCF gradient tol = %s', self.conv_tol_grad)
+        log.info('max. SCF cycles = %d', self.max_cycle)
+        log.info('direct_scf = %s', self.direct_scf)
         if self.direct_scf:
-            logger.info(self, 'direct_scf_tol = %g', self.direct_scf_tol)
+            log.info('direct_scf_tol = %g', self.direct_scf_tol)
         if self.chkfile:
-            logger.info(self, 'chkfile to save SCF result = %s', self.chkfile)
-        logger.info(self, 'max_memory %d MB (current use %d MB)',
-                    self.max_memory, lib.current_memory()[0])
+            log.info('chkfile to save SCF result = %s', self.chkfile)
+        log.info('max_memory %d MB (current use %d MB)',
+                 self.max_memory, lib.current_memory()[0])
         return self
 
 
